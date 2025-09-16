@@ -65,13 +65,13 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Generate namespace name - dedicated namespace for vault
+Generate namespace name - vault namespace
 */}}
 {{- define "openbao.namespace" -}}
 {{- if .Values.namespace.name }}
 {{- .Values.namespace.name }}
 {{- else }}
-{{- printf "%s-vault-dedicated" .Values.vault.name }}
+{{- printf "%s-vault" .Values.vault.name }}
 {{- end }}
 {{- end }}
 

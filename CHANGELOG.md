@@ -7,35 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2025-09-11
+## [1.0.0] - 2025-01-XX
 
 ### Added
-- Initial release of Ollama Helm Chart
-- Support for multiple AI models with dedicated configurations
-- NFS persistent storage integration
-- Automatic TLS certificate management with Let's Encrypt
-- Model-specific resource optimization
-- Isolated namespace deployments
-- Support for Llama 3.2 1B model
-- Support for Qwen 2.5 0.5B model
-- Automatic model downloading via Kubernetes jobs
-- Ingress configuration with nginx-ingress support
-- Health checks and probes for services
-- Configurable tolerations for dedicated node scheduling
+- Initial release of OpenBao Vault Helm Chart
+- Support for OpenBao vault deployment on dedicated Kubernetes nodes
+- NFS persistent storage integration using boyroywax/nfs-server
+- Security-first design with internal ClusterIP services only
+- Dedicated vault node scheduling with taints and tolerations
+- RBAC configuration with minimal required permissions
+- Health checks and probes for vault services
+- Configurable resource limits and requests
+- Isolated namespace deployment (openbao-vault-dedicated)
+- Production-ready vault configuration
 
 ### Features
-- **Multi-Model Support**: Deploy different AI models with optimized configurations
-- **Persistent Storage**: NFS-based persistent storage for model files
-- **Security**: TLS encryption and configurable security contexts
-- **Monitoring**: Built-in health checks and logging
-- **Scalability**: Resource limits and requests for efficient cluster usage
-- **Isolation**: Each model runs in its own namespace
+- **Security-First**: Internal-only access with no external ingress by default
+- **Persistent Storage**: NFS-based persistent storage for vault data
+- **Dedicated Nodes**: Deploy on dedicated, tainted Kubernetes nodes
+- **High Availability**: Supports multi-node vault configurations
+- **RBAC**: Proper ServiceAccount, ClusterRole, and ClusterRoleBinding
+- **Monitoring**: Built-in health checks and logging capabilities
+- **Scalability**: Configurable resource allocations for different workloads
 
 ### Configuration
-- Model-specific values files in `values/` directory
-- Customizable resource allocations per model
-- Configurable storage sizes based on model requirements
-- Flexible ingress and networking options
+- Pre-configured values file for dedicated vault deployment
+- Customizable resource allocations for vault and NFS components  
+- Configurable storage sizes based on vault data requirements
+- Flexible node selection and scheduling options
+- Internal networking with ClusterIP services
 
-[Unreleased]: https://github.com/yourusername/ollama-helm-charts/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/yourusername/ollama-helm-charts/releases/tag/v1.0.0
+### Components
+- OpenBao vault using openbao/openbao:latest (v2.4.1)
+- NFS server using boyroywax/nfs-server:1.0.0
+- Kubernetes RBAC resources
+- ConfigMaps for configuration management
+- PersistentVolumes and PersistentVolumeClaims for data persistence
+
+[Unreleased]: https://github.com/yourusername/openbao-helm-chart/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/yourusername/openbao-helm-chart/releases/tag/v1.0.0

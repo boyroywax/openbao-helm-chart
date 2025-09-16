@@ -1,6 +1,6 @@
-# Contributing to Ollama Helm Charts
+# Contributing to OpenBao Vault Helm Chart
 
-Thank you for your interest in contributing to the Ollama Helm Charts project! We welcome contributions of all kinds.
+Thank you for your interest in contributing to the OpenBao Vault Helm Chart project! We welcome contributions of all kinds.
 
 ## Getting Started
 
@@ -13,18 +13,28 @@ Thank you for your interest in contributing to the Ollama Helm Charts project! W
 
 ## Types of Contributions
 
-### Adding New Models
+### Vault Configuration Improvements
 
-To add support for a new AI model:
+To enhance vault deployment configurations:
 
-1. Create a new values file in `charts/ollama-model/values/` following the naming convention: `{model-name}-values.yaml`
-2. Configure the model parameters:
-   - `model.name`: Unique identifier for the model
-   - `model.fullName`: Full Ollama model name (e.g., "llama3.2:1b")
-   - `model.displayName`: Human-readable name
-   - `model.size`: Model download size
-3. Adjust resource requirements based on model size and performance needs
-4. Test the deployment thoroughly
+1. Modify values files in `charts/openbao-vault/values/` 
+2. Configure vault parameters:
+   - `vault.image`: OpenBao container image and version
+   - `vault.resources`: CPU/memory limits and requests
+   - `vault.config`: Vault configuration parameters
+   - `nfs.storage.size`: Storage requirements
+3. Test deployment thoroughly with different scenarios
+4. Ensure security best practices are maintained
+
+### Security Enhancements
+
+When improving security features:
+
+1. Follow security-first principles (internal-only by default)
+2. Implement proper RBAC configurations
+3. Use minimal required permissions
+4. Document security considerations
+5. Test with security scanners when possible
 
 ### Improving Templates
 
@@ -34,12 +44,14 @@ When modifying Kubernetes templates:
 2. Follow Kubernetes best practices
 3. Test with multiple value configurations
 4. Update documentation as needed
+5. Maintain security-focused approach
 
 ### Documentation Updates
 
 - Keep README.md current with new features
 - Add examples for new configurations
 - Update troubleshooting guides
+- Document security considerations
 
 ## Testing Guidelines
 
@@ -47,21 +59,38 @@ Before submitting a pull request:
 
 ### 1. Chart Validation
 ```bash
-helm lint charts/ollama-model
+helm lint charts/openbao-vault
 ```
 
 ### 2. Template Rendering Test
 ```bash
-helm template test-release charts/ollama-model -f charts/ollama-model/values/llama32-1b-values.yaml
+helm template test-release charts/openbao-vault \
+  -f charts/openbao-vault/values/openbao-vault-dedicated.yaml
 ```
 
 ### 3. Dry Run Installation
 ```bash
-helm install --dry-run test-release charts/ollama-model -f charts/ollama-model/values/llama32-1b-values.yaml
+helm install --dry-run test-release charts/openbao-vault \
+  -f charts/openbao-vault/values/openbao-vault-dedicated.yaml
 ```
 
-### 4. Multiple Model Configurations
-Test with different model values files to ensure compatibility.
+### 4. Security Testing
+- Verify no external ingress by default
+- Test RBAC permissions are minimal
+- Confirm vault runs on dedicated nodes
+- Validate NFS storage security
+
+### 5. Integration Testing
+Test with actual Kubernetes cluster:
+```bash
+# Deploy to test namespace
+helm install test-vault charts/openbao-vault \
+  -f charts/openbao-vault/values/openbao-vault-dedicated.yaml \
+  -n vault-test --create-namespace
+
+# Verify vault functionality
+kubectl exec -n vault-test -it deployment/openbao-vault -- bao status
+```
 
 ## Code Style
 
@@ -76,33 +105,57 @@ Test with different model values files to ensure compatibility.
 - Use consistent naming conventions
 - Include resource limits and requests
 - Implement proper health checks
+- Prioritize security in all configurations
 
 ## Pull Request Process
 
 1. **Title**: Use a clear, descriptive title
 2. **Description**: Explain what changes you made and why
-3. **Testing**: Describe how you tested your changes
-4. **Documentation**: Update relevant documentation
-5. **Breaking Changes**: Clearly mark any breaking changes
+3. **Security Impact**: Describe any security implications
+4. **Testing**: Describe how you tested your changes
+5. **Documentation**: Update relevant documentation
+6. **Breaking Changes**: Clearly mark any breaking changes
 
-## Model Configuration Guidelines
+## Vault Configuration Guidelines
 
-When adding new models, consider:
+When modifying vault configurations, consider:
+
+### Security Requirements
+- **Access Control**: Ensure internal-only access by default
+- **RBAC**: Use minimal required permissions
+- **Storage**: Secure data persistence with proper volume permissions
+- **Network**: No external ingress unless explicitly configured
 
 ### Resource Requirements
-- **Memory**: Base requirement + model size + overhead
-- **CPU**: Adjust based on model complexity
-- **Storage**: Model size + working space
+- **Memory**: Base requirement + vault overhead + storage caching
+- **CPU**: Adjust based on expected vault operations
+- **Storage**: Vault data + logs + backup space
+- **Network**: Consider NFS traffic between pods
 
-### Model-Specific Settings
-- Download timeout based on model size
-- Health check parameters
-- Security contexts if needed
+### High Availability Settings
+- Multiple vault instances (when supported)
+- Proper health checks and readiness probes
+- Graceful shutdown handling
+- Backup and recovery procedures
 
 ### Naming Conventions
-- Model names should be lowercase with hyphens
-- Use descriptive but concise names
-- Follow pattern: `{family}{version}-{size}` (e.g., `llama32-1b`)
+- Use descriptive, security-focused names
+- Follow pattern: `openbao-vault-{purpose}` (e.g., `openbao-vault-dedicated`)
+- Consistent labeling for monitoring
+
+## Security Guidelines
+
+### Default Security Posture
+- **No External Access**: ClusterIP services only by default
+- **Dedicated Nodes**: Deploy on tainted, dedicated nodes
+- **Minimal RBAC**: Only required permissions
+- **Secure Defaults**: Conservative security settings
+
+### Security Testing
+- Verify no unintended external exposure
+- Test RBAC permission boundaries
+- Validate storage security
+- Check for security misconfigurations
 
 ## Reporting Issues
 
@@ -112,12 +165,30 @@ When reporting bugs or requesting features:
 2. Use issue templates when available
 3. Provide clear reproduction steps
 4. Include relevant logs and configuration
-5. Specify Kubernetes and Helm versions
+5. Specify Kubernetes, Helm, and OpenBao versions
+6. Describe security context if applicable
+
+## Documentation Standards
+
+- **Security**: Document all security considerations
+- **Configuration**: Explain configuration options clearly
+- **Troubleshooting**: Provide actionable troubleshooting steps
+- **Examples**: Include practical examples
+- **Best Practices**: Share operational wisdom
 
 ## Questions?
 
 - **GitHub Discussions**: For general questions and community support
 - **GitHub Issues**: For bug reports and feature requests
 - **Documentation**: Check existing docs in the repository
+- **Security**: Use private disclosure for security-related issues
 
-Thank you for contributing! 🚀
+## Security Disclosure
+
+For security vulnerabilities:
+1. **DO NOT** open public GitHub issues
+2. Contact maintainers privately
+3. Allow reasonable time for fixes
+4. Coordinate responsible disclosure
+
+Thank you for contributing to OpenBao Vault security! �️

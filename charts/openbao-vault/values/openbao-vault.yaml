@@ -1,4 +1,4 @@
-# OpenBao vault dedicated deployment values
+# OpenBao vault deployment values
 # This file configures the OpenBao vault deployment on vault-labeled nodes
 
 vault:
@@ -7,10 +7,10 @@ vault:
   displayName: "OpenBao Vault"
   url: "https://openbao.org"
 
-# Namespace configuration - dedicated vault namespace
+# Namespace configuration - vault namespace
 namespace:
   create: true
-  name: openbao-vault-dedicated
+  name: openbao-vault
 
 # NFS configuration for vault storage - CRITICAL: Using boyroywax/nfs-server
 nfs:
@@ -152,7 +152,7 @@ affinity:
           values:
           - "true"
 
-# Tolerations for dedicated vault nodes
+# Tolerations for vault nodes
 tolerations:
 - key: "node-role.kubernetes.io/vault"
   operator: "Equal"

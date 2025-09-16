@@ -1,64 +1,63 @@
-# 🦙 Ollama Model Helm Chart
+# 🛡️ OpenBao Vault Helm Chart
 
-A production-ready Helm chart for deploying Ollama AI models on Kubernetes with dedicated model infrastructure, NFS shared storage, and automatic TLS certificates.
+A production-ready Helm chart for deploying OpenBao vault on Kubernetes with dedicated vault infrastructure, NFS persistent storage, and secure cluster-only access.
 
 ## 🎯 Features
 
-- **Dedicated Model Nodes**: Deploy models on dedicated Kubernetes nodes with taints and node affinity
-- **Shared NFS Storage**: Efficient model sharing across pods using NFS persistent volumes
-- **Automatic Model Download**: Pre-download models during deployment with validation
-- **Production Ready**: Health checks, resource limits, and monitoring integration
-- **TLS Security**: Automatic HTTPS certificates via cert-manager and Let's Encrypt
-- **Multi-Model Support**: 8 pre-configured popular AI models ready to deploy
+- **Dedicated Vault Nodes**: Deploy vault on dedicated Kubernetes nodes with taints and node affinity
+- **Persistent NFS Storage**: Secure data persistence usi# Test template rendering
+helm template test-vault charts/openbao-vault \
+  -f charts/openbao-vault/values/openbao-vault.yaml
+
+# Dry run installation
+helm install --dry-run test-release charts/openbao-vault \
+  -f charts/openbao-vault/values/openbao-vault.yamlshared storage
+- **Security-First**: Internal ClusterIP services with no external exposure by default
+- **Production Ready**: Health checks, resource limits, and proper RBAC
+- **High Availability**: Supports multi-node vault configurations
+- **Kubernetes Native**: Designed specifically for Kubernetes environments
 
 ## 📋 Prerequisites
 
 - Kubernetes cluster (1.19+)
 - Helm 3.x
 - StorageClass for dynamic provisioning (e.g., `do-block-storage` for DigitalOcean)
-- nginx-ingress-controller installed
-- cert-manager installed for TLS certificates
 - kubectl configured with cluster access
 
 ## 🏗️ Node Setup and Labeling
 
-### Dedicated Node Configuration
+### Dedicated Vault Node Configuration
 
-For optimal performance, this chart supports dedicated nodes for each model. Dedicated nodes prevent resource contention and allow for model-specific optimizations.
+For optimal security and performance, this chart supports dedicated nodes for vault deployment. Dedicated nodes prevent resource contention and provide better isolation for sensitive vault operations.
 
 #### Step 1: Create or Label Nodes
 
 **For DigitalOcean Kubernetes (DOKS):**
 ```bash
-# Create a new node pool for a specific model (e.g., qwen25-05b)
+# Create a new node pool for vault
 doctl kubernetes cluster node-pool create <cluster-name> \
-  --name ollama-qwen25-05b \
+  --name vault-nodes \
   --size s-4vcpu-8gb \
   --count 1 \
-  --tag ollama,qwen25-05b
+  --tag vault,secure
 
 # Or label existing nodes
-kubectl label node <node-name> node-role.kubernetes.io/qwen25-05b=true
+kubectl label node <node-name> node-role.kubernetes.io/vault=true
 ```
 
 **For other Kubernetes platforms:**
 ```bash
-# Label a node for a specific model
-kubectl label node <node-name> node-role.kubernetes.io/qwen25-05b=true
-kubectl label node <node-name> node-role.kubernetes.io/llama32-1b=true
-kubectl label node <node-name> node-role.kubernetes.io/phi3-38b=true
-# ... etc for other models
+# Label a node for vault deployment
+kubectl label node <node-name> node-role.kubernetes.io/vault=true
 ```
 
 #### Step 2: Add Node Taints (Recommended)
 
-Taint nodes to ensure only ollama workloads are scheduled:
+Taint nodes to ensure only vault workloads are scheduled:
 
 ```bash
-# Taint nodes to dedicate them for ollama workloads
-kubectl taint node <qwen25-05b-node> ollama=dedicated:NoSchedule
-kubectl taint node <llama32-1b-node> ollama=dedicated:NoSchedule
-kubectl taint node <phi3-38b-node> ollama=dedicated:NoSchedule
+# Taint nodes to dedicate them for vault workloads
+kubectl taint node <vault-node> vault=dedicated:NoSchedule
 ```
 
 #### Step 3: Verify Node Configuration
@@ -71,111 +70,147 @@ kubectl describe node <node-name>
 
 ### Supported Node Labels
 
-Each model configuration expects specific node labels:
+The vault configuration expects specific node labels:
 
-| Model | Node Label | Recommended Node Size |
-|-------|------------|----------------------|
-| **Qwen 2.5 0.5B** | `node-role.kubernetes.io/qwen25-05b=true` | 2-4 CPU, 4-8GB RAM |
-| **Llama 3.2 1B** | `node-role.kubernetes.io/llama32-1b=true` | 2-4 CPU, 4-8GB RAM |
-| **Phi3 3.8B** | `node-role.kubernetes.io/phi3-38b=true` | 4-8 CPU, 8-16GB RAM |
-| **Gemma 2B** | `node-role.kubernetes.io/gemma-2b=true` | 2-4 CPU, 4-8GB RAM |
-| **Mistral 7B** | `node-role.kubernetes.io/mistral-7b=true` | 4-8 CPU, 8-16GB RAM |
-| **Llama 3.1 8B** | `node-role.kubernetes.io/llama31-8b=true` | 6-8 CPU, 12-16GB RAM |
-| **Code Llama 7B** | `node-role.kubernetes.io/code-llama-7b=true` | 4-8 CPU, 8-16GB RAM |
-| **Codestral** | `node-role.kubernetes.io/codestral=true` | 4-8 CPU, 8-16GB RAM | 
+| Component | Node Label | Recommended Node Size |
+|-----------|------------|----------------------|
+| **OpenBao Vault** | `node-role.kubernetes.io/vault=true` | 4-8 CPU, 8-16GB RAM |
+
 ## 🚀 Quick Start
 
-### 1. Deploy a Model
+### 1. Deploy OpenBao Vault
 
-Choose from our pre-configured models and deploy:
+Deploy the vault with dedicated configuration:
 
 ```bash
-# Deploy Qwen 2.5 0.5B (lightweight model)
-helm install qwen25-05b ./charts/ollama-model \
-  --namespace qwen25-05b \
-  --values ./charts/ollama-model/values/qwen25-05b.yaml \
-  --create-namespace
-
-# Deploy Llama 3.2 1B 
-helm install llama32-1b ./charts/ollama-model \
-  --namespace llama32-1b \
-  --values ./charts/ollama-model/values/llama32-1b.yaml \
-  --create-namespace
-
-# Deploy Phi3 3.8B
-helm install phi3-38b ./charts/ollama-model \
-  --namespace phi3-38b \
-  --values ./charts/ollama-model/values/phi3-38b.yaml \
+# Deploy OpenBao Vault
+helm install openbao-vault ./charts/openbao-vault \
+  --namespace openbao-vault \
+  --values ./charts/openbao-vault/values/openbao-vault.yaml \
   --create-namespace
 ```
 
 ### 2. Check Deployment Status
 
 ```bash
-# Check all helm releases
+# Check helm release
 helm list --all-namespaces
 
 # Monitor pod status
-kubectl get pods -n qwen25-05b
-kubectl get pods -n llama32-1b
+kubectl get pods -n openbao-vault
 
-# Check ingress and TLS certificates
-kubectl get ingress -A
-kubectl get certificates -A
+# Check services (note: ClusterIP only for security)
+kubectl get svc -n openbao-vault
 ```
 
-### 3. Access Your Model
+### 3. Access Your Vault (Internal Only)
 
-Once deployed, your models will be available at:
-
-- **Qwen 2.5 0.5B**: `https://qwen25-05b.ollama.ai.layerwork.space`
-- **Llama 3.2 1B**: `https://llama32-1b.ollama.ai.layerwork.space`
-- **Phi3 3.8B**: `https://phi3-38b.ollama.ai.layerwork.space`
-
-### 4. Test Your Deployment
+The vault is configured for internal cluster access only:
 
 ```bash
-# Test API endpoint
-curl -X POST https://qwen25-05b.ollama.ai.layerwork.space/api/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "qwen2.5:0.5b",
-    "prompt": "Hello, how are you?",
-    "stream": false
-  }'
+# Port-forward to access vault locally
+kubectl port-forward -n openbao-vault svc/openbao-vault 8200:8200
 
-# Or use kubectl port-forward for local testing
-kubectl port-forward -n qwen25-05b svc/ollama-qwen25-05b 11434:11434
-curl -X POST http://localhost:11434/api/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "qwen2.5:0.5b",
-    "prompt": "Hello, how are you?",
-    "stream": false
-  }'
+# Access vault at http://localhost:8200
+# Use the vault CLI or web interface
 ```
 
-## 📚 Supported Models
+### 4. Initialize and Unseal Vault
 
-### Lightweight Models (< 2GB)
-| Model | Size | Command | Best For |
-|-------|------|---------|----------|
-| **Qwen 2.5 0.5B** | 394MB | `helm install qwen25-05b` | Testing, development |
-| **Llama 3.2 1B** | 1.3GB | `helm install llama32-1b` | General conversation |
-| **Google Gemma 2B** | 1.4GB | `helm install gemma-2b` | Efficient language tasks |
+```bash
+# Initialize the vault (first time only)
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- \
+  bao operator init
 
-### Medium Models (2-10GB)
-| Model | Size | Command | Best For |
-|-------|------|---------|----------|
-| **Phi3 3.8B** | 2.2GB | `helm install phi3-38b` | Balanced performance |
-| **Mistral 7B** | 4.1GB | `helm install mistral-7b` | General purpose AI |
-| **Llama 3.1 8B** | 4.7GB | `helm install llama31-8b` | Advanced reasoning |
-| **Code Llama 7B** | 3.8GB | `helm install code-llama-7b` | Code generation |
+# Unseal the vault (use keys from init output)
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- \
+  bao operator unseal <unseal-key-1>
 
-### Large Models (> 10GB)
-| Model | Size | Command | Best For |
-|-------|------|---------|----------|
-| **Codestral** | 12GB | `helm install codestral` | Advanced coding tasks |
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- \
+  bao operator unseal <unseal-key-2>
+
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- \
+  bao operator unseal <unseal-key-3>
+```
+
+### 5. Test Your Deployment
+
+```bash
+# Check vault status
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- \
+  bao status
+
+# Or via port-forward and HTTP API
+curl -s http://localhost:8200/v1/sys/health | jq
+```
+
+## 🔧 Configuration
+
+### Available Values Files
+
+The chart includes pre-configured values for different deployment scenarios:
+
+**Vault Deployment:**
+- `openbao-vault.yaml` - Production vault on vault nodes with security hardening
+
+### Customization
+
+You can override any values by creating your own values file or using `--set` flags:
+
+```bash
+helm install my-vault ./charts/openbao-vault \
+  -f ./charts/openbao-vault/values/openbao-vault.yaml \
+  --set vault.resources.limits.memory=16Gi \
+  --set nfs.storage.size=50Gi
+```
+
+### Key Configuration Options
+
+- **Node Selection**: Configure in `nodeSelector` and `tolerations`
+- **Resource Limits**: Configure CPU/memory in `vault.resources` and `nfs.resources`
+- **Storage Size**: Adjust `nfs.storage.size` based on vault data requirements
+- **Security**: All services use ClusterIP for internal-only access
+- **Namespace**: Configurable namespace for deployment isolation
+
+## 🏗️ Architecture
+
+Each deployment includes:
+
+- **Namespace**: Isolated environment for vault deployment (`openbao-vault`)
+- **NFS Server**: Persistent storage for vault data using `boyroywax/nfs-server:1.0.0`
+- **OpenBao Vault**: Main vault service using `openbao/openbao:latest` (v2.4.1)
+- **RBAC**: Proper ServiceAccount, ClusterRole, and ClusterRoleBinding for security
+- **Services**: Internal ClusterIP services only (no external exposure)
+- **ConfigMaps**: Configuration management for vault and NFS
+
+## 📁 Project Structure
+
+```
+openbao-helm-chart/
+├── README.md                           # This file - comprehensive documentation
+├── CHANGELOG.md                        # Version history and release notes
+├── CONTRIBUTING.md                     # Contribution guidelines
+├── LICENSE                            # MIT license
+├── create-docker-secret.sh            # Helper script for Docker registry secrets
+├── .gitignore                         # Git ignore rules
+└── charts/
+    └── openbao-vault/                 # Main Helm chart
+        ├── Chart.yaml                 # Chart metadata and version info
+        ├── values.yaml                # Default values
+        ├── .helmignore               # Helm ignore rules
+        ├── values/
+        │   └── openbao-vault-dedicated.yaml  # Production values for dedicated deployment
+        └── templates/
+            ├── _helpers.tpl           # Template helpers and functions
+            ├── namespace.yaml         # Namespace creation
+            ├── pv-creator-rbac.yaml   # RBAC for PV management
+            ├── nfs-pv-creator.yaml    # Job to create NFS PersistentVolume
+            ├── nfs-server.yaml        # NFS server deployment and service
+            ├── storage.yaml           # PVC for vault data
+            ├── deployment.yaml        # Main vault deployment and service
+            ├── vault-init-job.yaml    # Optional vault initialization job
+            └── ingress.yaml           # Ingress (disabled by default)
+```
 
 ## 🛠️ Troubleshooting
 
@@ -185,24 +220,24 @@ curl -X POST http://localhost:11434/api/generate \
 
 **Symptoms:** Pods show `Pending` status
 ```bash
-kubectl get pods -n qwen25-05b
+kubectl get pods -n openbao-vault
 # NAME                                     READY   STATUS    RESTARTS   AGE
-# download-qwen25-05b-xsllq                0/1     Pending   0          5m
+# openbao-vault-xxx                        0/1     Pending   0          5m
 ```
 
 **Diagnosis:**
 ```bash
-kubectl describe pod -n qwen25-05b <pod-name>
+kubectl describe pod -n openbao-vault <pod-name>
 ```
 
 **Common Causes & Solutions:**
 
 **a) Node Taint Issues**
 ```bash
-# Error: "0/5 nodes are available: 2 node(s) had untolerated taint {ollama: dedicated}"
+# Error: "0/5 nodes are available: 2 node(s) had untolerated taint {vault: dedicated}"
 # Solution: Ensure your values file has proper tolerations:
 tolerations:
-  - key: "ollama"
+  - key: "vault"
     operator: "Equal"
     value: "dedicated"
     effect: "NoSchedule"
@@ -212,98 +247,50 @@ tolerations:
 ```bash
 # Error: "pod has unbound immediate PersistentVolumeClaims"
 # Check PVC status
-kubectl get pvc -n qwen25-05b
+kubectl get pvc -n openbao-vault
 
-# If PVC is stuck, delete and recreate deployment
-kubectl delete namespace qwen25-05b
-helm install qwen25-05b ./charts/ollama-model -n qwen25-05b --values ./charts/ollama-model/values/qwen25-05b.yaml --create-namespace
+# Check NFS server status
+kubectl logs -n openbao-vault deployment/openbao-vault-nfs-server
 ```
 
 **c) Resource Constraints**
 ```bash
 # Error: "Insufficient cpu" or "Insufficient memory"
 # Check node resources
-kubectl describe node <node-name>
+kubectl describe node <vault-node>
 
 # Scale up your cluster or reduce resource requests
 ```
-- `gemma-2b.yaml` - Google Gemma 2B configuration
 
-**Medium Models:**
-- `phi3-38b.yaml` - Microsoft Phi-3 3.8B configuration (flexible scheduling)
-- `code-llama-7b.yaml` - Code Llama 7B configuration
-- `mistral-7b.yaml` - Mistral 7B configuration
-- `llama31-8b.yaml` - Llama 3.1 8B configuration
+#### 2. Vault Initialization Issues
 
-**Large Models:**
-- `codestral.yaml` - Codestral configuration
-
-### Customization
-
-You can override any values by creating your own values file or using `--set` flags:
-
+**Symptoms:** Vault shows as sealed or uninitialized
 ```bash
-helm install my-model ./charts/ollama-model 
-  -f ./charts/ollama-model/values/llama32-1b-values.yaml 
-  --set ingress.host=my-custom-domain.com 
-  --set ollama.resources.limits.memory=8Gi
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- bao status
+# Error: Vault is sealed
 ```
 
-### Key Configuration Options
-
-- **Model Selection**: Set in `model.name` and `model.fullName`
-- **Resource Limits**: Configure CPU/memory in `ollama.resources` and `nfs.resources`
-- **Storage Size**: Adjust `nfs.storage.size` based on model requirements
-- **Ingress**: Enable/disable and configure hostname in `ingress` section
-- **Namespace**: Auto-generated as `ollama-{model.name}` or set custom name
-
-## Architecture
-
-Each deployment includes:
-
-- **Namespace**: Isolated environment for the model
-- **NFS Server**: Persistent storage for model files
-- **Ollama Service**: AI inference service
-- **Model Download Job**: Automatic model downloading and setup
-- **Ingress**: HTTPS access with automatic TLS certificates
-- **ConfigMaps**: Configuration management
-
-## Monitoring & Troubleshooting
-
-### Check deployment status:
+**Solutions:**
 ```bash
-# List all Ollama deployments
-helm list --all-namespaces | grep ollama
+# Initialize vault if not done yet
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- \
+  bao operator init
 
-# Check specific deployment
-helm status llama32-1b -n ollama-llama32-1b
-
-# View pods
-kubectl get pods -n ollama-llama32-1b
-```
-
-### Access logs:
-```bash
-# Ollama service logs
-kubectl logs -n ollama-llama32-1b deployment/llama32-1b-ollama
-
-# NFS server logs  
-kubectl logs -n ollama-llama32-1b deployment/llama32-1b-nfs-server
-
-# Model download job logs
-kubectl logs -n ollama-llama32-1b job/llama32-1b-download-model
+# Unseal vault with keys from initialization
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- \
+  bao operator unseal <key>
 ```
 
 ### NFS Troubleshooting
 
-If pods are stuck in `Pending` state with "unbound immediate PersistentVolumeClaims" errors:
+If pods are stuck with PVC binding issues:
 
 ```bash
 # Check if NFS server is running
-kubectl get pods -n <model-namespace> | grep nfs-server
+kubectl get pods -n openbao-vault | grep nfs-server
 
 # Check NFS server logs
-kubectl logs -n <model-namespace> deployment/<model-name>-nfs-server
+kubectl logs -n openbao-vault deployment/openbao-vault-nfs-server
 
 # Test NFS mount manually
 kubectl run nfs-test --image=busybox --rm -it --restart=Never \
@@ -317,55 +304,96 @@ kubectl run nfs-test --image=busybox --rm -it --restart=Never \
       }],
       "volumes": [{"name": "nfs-test", "nfs": {"server": "<nfs-server-ip>", "path": "/nfsshare/data"}}]
     }
-  }' -- /bin/sh
+  }' -n openbao-vault -- /bin/sh
 
 # Check persistent volumes
-kubectl get pv | grep <model-name>
-kubectl describe pv <model-name>-nfs-pv
+kubectl get pv | grep openbao-vault
+kubectl describe pv openbao-vault-nfs-pv
 ```
 
 **Common NFS Issues:**
-- **Missing NFS client tools**: Some Kubernetes distributions may not have NFS client packages installed
-- **Network policies**: Ensure NFS traffic (ports 2049, 111, 20048) is allowed between pods
-- **Storage class conflicts**: Make sure the NFS server's backend storage is properly provisioned
+- **NFS server startup**: The vault pod depends on NFS server being ready
+- **Network policies**: Ensure NFS traffic (ports 2049, 111, 20048) is allowed
+- **Storage class**: Verify the NFS server's backend storage is properly provisioned
 
-## Adding New Models
+## 📊 Monitoring & Maintenance
 
-To add a new model:
+### Check deployment status:
+```bash
+# List vault deployment
+helm list --all-namespaces | grep openbao
 
-1. Create a new values file in `charts/ollama-model/values/` (e.g., `my-model-values.yaml`)
-2. Configure the model parameters:
-   ```yaml
-   model:
-     name: "my-model"
-     fullName: "my-model:latest"  
-     displayName: "My Custom Model"
-     size: "2GB"
-   ```
-3. Adjust resource requirements based on model size
-4. Deploy using the new values file
+# Check specific deployment
+helm status openbao-vault -n openbao-vault
 
-## Development
+# View all pods
+kubectl get pods -n openbao-vault -o wide
+```
+
+### Access logs:
+```bash
+# Vault service logs
+kubectl logs -n openbao-vault deployment/openbao-vault
+
+# NFS server logs  
+kubectl logs -n openbao-vault deployment/openbao-vault-nfs-server
+
+# Get vault status
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- bao status
+```
+
+### Backup and Recovery:
+```bash
+# Create a backup (vault must be unsealed)
+kubectl exec -n openbao-vault -it deployment/openbao-vault -- \
+  bao operator raft snapshot save backup.snap
+
+# Copy backup out of pod
+kubectl cp openbao-vault/openbao-vault-xxx:/backup.snap ./vault-backup.snap
+```
+
+## 🔒 Security Considerations
+
+### Default Security Configuration
+
+- **Internal Only**: All services use ClusterIP (no external exposure)
+- **Dedicated Nodes**: Vault runs on dedicated, tainted nodes
+- **RBAC**: Minimal required permissions via ServiceAccount
+- **Network Policies**: Consider implementing network policies for additional security
+- **TLS**: Configure TLS certificates for production deployments
+
+### Recommended Security Enhancements
+
+1. **Enable TLS**: Configure TLS certificates for vault API
+2. **Network Policies**: Restrict pod-to-pod communication
+3. **Sealed Secrets**: Use sealed-secrets or external secret management
+4. **Audit Logging**: Enable vault audit logging
+5. **Backup Encryption**: Encrypt vault snapshots
+
+## 🚀 Development
 
 ### Testing locally:
 ```bash
 # Validate chart syntax
-helm lint charts/ollama-model
+helm lint charts/openbao-vault
 
 # Test template rendering
-helm template test-release charts/ollama-model -f charts/ollama-model/values/llama32-1b-values.yaml
+helm template test-release charts/openbao-vault \
+  -f charts/openbao-vault/values/openbao-vault-dedicated.yaml
 
 # Dry run installation
-helm install --dry-run test-release charts/ollama-model -f charts/ollama-model/values/llama32-1b-values.yaml
+helm install --dry-run test-release charts/openbao-vault \
+  -f charts/openbao-vault/values/openbao-vault-dedicated.yaml
 ```
 
 ### Template debugging:
 ```bash
 # Debug specific template
-helm template test-release charts/ollama-model -f charts/ollama-model/values/llama32-1b-values.yaml --debug
+helm template test-release charts/openbao-vault \
+  -f charts/openbao-vault/values/openbao-vault.yaml --debug
 ```
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -373,17 +401,17 @@ helm template test-release charts/ollama-model -f charts/ollama-model/values/lla
 4. Test with `helm lint` and `helm template`
 5. Submit a pull request
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
+## 🆘 Support
 
 - **Documentation**: See `docs/` directory for detailed guides
 - **Issues**: Report bugs via GitHub Issues  
 - **Discussions**: Use GitHub Discussions for questions
 
-## Related Projects
+## 🔗 Related Projects
 
-- [Ollama](https://ollama.ai/) - Run AI models locally
+- [OpenBao](https://openbao.org/) - Open source fork of HashiCorp Vault
 - [boyroywax/nfs-server](https://github.com/boyroywax/nfs-server) - Custom NFS server for Kubernetes

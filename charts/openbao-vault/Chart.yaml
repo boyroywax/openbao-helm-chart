@@ -1,6 +1,6 @@
 apiVersion: v2
 name: openbao
-description: A Helm chart for deploying OpenBao vault with dedicated NFS storage on vault-labeled nodes  
+description: A Helm chart for deploying OpenBao vault with NFS storage on vault-labeled nodes  
 type: application
 version: 1.0.0
 appVersion: "latest"

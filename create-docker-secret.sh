@@ -11,7 +11,7 @@ fi
 
 DOCKER_USERNAME=$1
 DOCKER_PASSWORD=$2
-NAMESPACE="openbao-vault-dedicated"
+NAMESPACE="openbao-vault"
 
 echo "🔐 Creating Docker Hub credentials secret..."
 
@@ -39,4 +39,4 @@ fi
 
 echo ""
 echo "💡 You can now deploy your OpenBao vault with:"
-echo "   helm upgrade openbao-vault-dedicated . -f values/openbao-vault-dedicated.yaml -n openbao-vault-dedicated"
+echo "   helm upgrade openbao-vault . -f values/openbao-vault.yaml -n openbao-vault"
