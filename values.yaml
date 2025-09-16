@@ -1,0 +1,85 @@
+# Namespace configuration
+namespace:
+  name: openbao-vault
+  create: true
+
+# Global values that will be passed to subcharts
+global:
+  namespace:
+    name: openbao-vault
+
+image:
+  repository: openbao/vault
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8200
+  targetPort: 8200
+  annotations: {}
+
+# Service Account configuration
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Vault configuration
+vault:
+  token: "myroot"
+  
+# Vault configuration file content
+vaultConfig: |
+  ui = true
+  
+  storage "file" {
+    path = "/vault/file"
+  }
+  
+  listener "tcp" {
+    address = "0.0.0.0:8200"
+    tls_disable = 1
+  }
+
+ingress:
+  enabled: false
+  name: ""
+  path: /
+  pathType: ImplementationSpecific
+  host: vault.example.com
+  tls:
+    secretName: vault-tls
+  annotations: {} 
+
+persistence:
+  enabled: true
+  storageClass: "do-block-storage"
+  accessModes:
+    - ReadWriteMany
+  size: 10Gi
+
+resources: {}
+  
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# NFS Server configuration (subchart)
+nfs-server:
+  enabled: true
+  storage:
+    enabled: true
+    storageClass: "do-block-storage"
+    size: 10Gi
+  nfs:
+    image:
+      repository: k8s.gcr.io/volume-nfs
+      tag: "0.8"
+    service:
+      enabled: true
+      type: ClusterIP
+      port: 2049

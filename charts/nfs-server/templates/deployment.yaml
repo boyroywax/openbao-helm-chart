@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-nfs-server
+  namespace: {{ .Values.global.namespace.name | default "openbao-vault" }}
+  labels:
+    app: nfs-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nfs-server
+  template:
+    metadata:
+      labels:
+        app: nfs-server
+    spec:
+      containers:
+        - name: nfs-server
+          image: "{{ .Values.nfs.image.repository }}:{{ .Values.nfs.image.tag }}"
+          ports:
+            - name: nfs
+              containerPort: 2049
+            - name: rpcbind
+              containerPort: 111
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: nfs-storage
+              mountPath: /exports
+      volumes:
+        - name: nfs-storage
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-nfs-pvc

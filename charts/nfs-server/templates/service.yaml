@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-nfs-server
+  namespace: {{ .Values.global.namespace.name | default "openbao-vault" }}
+  labels:
+    app: nfs-server
+spec:
+  type: {{ .Values.nfs.service.type }}
+  ports:
+    - port: {{ .Values.nfs.service.port }}
+      targetPort: 2049
+      protocol: TCP
+      name: nfs
+    - port: 111
+      targetPort: 111
+      protocol: TCP
+      name: rpcbind
+  selector:
+    app: nfs-server
+  sessionAffinity: None

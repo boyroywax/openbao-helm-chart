@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openbao.fullname" . }}-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+data:
+  vault.hcl: |
+{{- .Values.vaultConfig | nindent 4 }}

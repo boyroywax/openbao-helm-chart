@@ -1,0 +1,22 @@
+name: openbao
+version: 0.1.0
+description: A Helm chart for deploying the OpenBao Vault server with NFS storage.
+type: application
+keywords:
+  - vault
+  - openbao
+  - helm
+  - nfs
+maintainers:
+  - name: Your Name
+    email: your.email@example.com
+sources:
+  - https://github.com/your-repo/openbao-helm-chart
+dependencies:
+  - name: nfs-server
+    version: 0.1.0
+    repository: https://github.com/boyroywax/nfs-server
+    condition: nfs.enabled
+    tags:
+      - storage
+```
