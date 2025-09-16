@@ -1,25 +1,75 @@
-1. Get the application URL by running these commands:
-{{- if contains "NodePort" .Values.service.type }}
-  export NODE_PORT=$(kubectl get --namespace {{ .Values.namespace.name }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "openbao.fullname" . }})
-  export NODE_IP=$(kubectl get nodes --namespace {{ .Values.namespace.name }} -o jsonpath="{.items[0].status.addresses[0].address}")
-  echo http://$NODE_IP:$NODE_PORT
-{{- else if contains "LoadBalancer" .Values.service.type }}
-     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch the status of by running 'kubectl get --namespace {{ .Values.namespace.name }} svc -w {{ include "openbao.fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc --namespace {{ .Values.namespace.name }} {{ include "openbao.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
-  echo http://$SERVICE_IP:{{ .Values.service.port }}
-{{- else if contains "ClusterIP" .Values.service.type }}
-  export POD_NAME=$(kubectl get pods --namespace {{ .Values.namespace.name }} -l "app={{ include "openbao.name" . }},release={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
-  echo "Visit http://127.0.0.1:8080 to use your application"
-  kubectl --namespace {{ .Values.namespace.name }} port-forward $POD_NAME 8080:{{ .Values.service.port }}
+🔐 OpenBao Vault Helm Chart - {{ .Chart.Version }}
+
+Thank you for installing {{ .Chart.Name }}!
+Your OpenBao Vault server has been deployed with the following configuration:
+
+📋 Deployment Information:
+• Release Name: {{ .Release.Name }}
+• Namespace: {{ include "openbao.namespace" . }}
+• Chart Version: {{ .Chart.Version }}
+• App Version: {{ .Chart.AppVersion | default "latest" }}
+
+🌐 Access Information:
+{{- if .Values.ingress.enabled }}
+• External URL: https://{{ include "openbao.hostname" . }}
+• TLS Certificate: {{ include "openbao.tlsSecretName" . }}
+{{- else }}
+• Internal Service: {{ include "openbao.fullname" . }}.{{ include "openbao.namespace" . }}.svc.cluster.local:{{ .Values.service.port }}
+• Access via port-forward:
+  kubectl port-forward -n {{ include "openbao.namespace" . }} svc/{{ include "openbao.fullname" . }} 8200:{{ .Values.service.port }}
 {{- end }}
 
-2. To check the status of your OpenBao Vault deployment:
-   kubectl get pods -n {{ .Values.namespace.name }}
-   kubectl get svc -n {{ .Values.namespace.name }}
+💾 Storage Information:
+{{- if .Values.persistence.enabled }}
+• NFS Storage: Enabled ({{ .Values.persistence.size }})
+• Storage Class: {{ .Values.persistence.storageClass }}
+• NFS Server: {{ include "openbao.nfsServerName" . }}
+{{- else }}
+• Storage: Ephemeral (data will be lost on pod restart)
+{{- end }}
 
-3. To initialize and unseal the vault (if not done automatically):
-   kubectl exec -n {{ .Values.namespace.name }} -it {{ include "openbao.fullname" . }}-<pod-suffix> -- vault operator init
-   kubectl exec -n {{ .Values.namespace.name }} -it {{ include "openbao.fullname" . }}-<pod-suffix> -- vault operator unseal
+🚀 Getting Started:
 
-4. The OpenBao Vault is deployed in the {{ .Values.namespace.name }} namespace.
+1. Check deployment status:
+   kubectl get pods -n {{ include "openbao.namespace" . }}
+
+2. View vault logs:
+   kubectl logs -n {{ include "openbao.namespace" . }} deployment/{{ include "openbao.fullname" . }}
+
+3. Access the Vault UI:
+{{- if .Values.ingress.enabled }}
+   Open: https://{{ include "openbao.hostname" . }}
+{{- else }}
+   kubectl port-forward -n {{ include "openbao.namespace" . }} svc/{{ include "openbao.fullname" . }} 8200:{{ .Values.service.port }}
+   Then open: http://localhost:8200
+{{- end }}
+
+4. Initial setup (if using dev mode):
+{{- if .Values.vault.env.VAULT_DEV_ROOT_TOKEN_ID }}
+   Root Token: {{ .Values.vault.env.VAULT_DEV_ROOT_TOKEN_ID }}
+{{- else }}
+   # Initialize the vault (production mode)
+   kubectl exec -n {{ include "openbao.namespace" . }} deployment/{{ include "openbao.fullname" . }} -- vault operator init
+{{- end }}
+
+🔍 Troubleshooting:
+
+• Check pod status:
+  kubectl describe pod -n {{ include "openbao.namespace" . }} -l app.kubernetes.io/name={{ include "openbao.name" . }}
+
+• Check NFS server status:
+  kubectl get pods -n {{ include "openbao.namespace" . }} -l app=nfs-server
+
+• Check PVC status:
+  kubectl get pvc -n {{ include "openbao.namespace" . }}
+
+• Check PV status:
+  kubectl get pv {{ .Release.Name }}-nfs-pv
+
+📚 Documentation:
+• Vault Documentation: https://developer.hashicorp.com/vault/docs
+• OpenBao Documentation: https://openbao.org/docs
+• Chart Repository: https://github.com/boyroywax/openbao-helm-chart
+
+---
+Happy Vaulting! 🔐✨
