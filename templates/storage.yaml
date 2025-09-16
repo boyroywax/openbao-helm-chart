@@ -1,0 +1,19 @@
+---
+# NFS Persistent Volume Claim for vault data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.vault.name }}-vault-data-pvc
+  namespace: {{ include "openbao.namespace" . }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+    storage-type: nfs-shared
+    component: storage-infrastructure
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.nfs.storage.size }}
+  storageClassName: ""
+  volumeName: {{ .Values.vault.name }}-nfs-pv

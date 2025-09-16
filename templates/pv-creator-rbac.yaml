@@ -1,0 +1,51 @@
+---
+# ServiceAccount for PV creator job (OpenBao vault)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openbao-pv-creator
+  namespace: {{ include "openbao.namespace" . }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+
+---
+# ClusterRole for PV management (OpenBao vault)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openbao-pv-creator-{{ .Values.vault.name }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["create", "get", "list", "patch", "update", "delete"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]
+
+---
+# ClusterRoleBinding (OpenBao vault)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openbao-pv-creator-{{ .Values.vault.name }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+subjects:
+- kind: ServiceAccount
+  name: openbao-pv-creator
+  namespace: {{ include "openbao.namespace" . }}
+roleRef:
+  kind: ClusterRole
+  name: openbao-pv-creator-{{ .Values.vault.name }}
+  apiGroup: rbac.authorization.k8s.io

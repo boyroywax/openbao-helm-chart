@@ -1,0 +1,94 @@
+{{- if .Values.vaultInit.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init-{{ .Values.vault.name }}
+  namespace: {{ include "openbao.namespace" . }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+    component: vault-initializer
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  backoffLimit: {{ .Values.vaultInit.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.vaultInit.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.vaultInit.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "openbao.labels" . | nindent 8 }}
+        component: vault-initializer
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: vault-initializer
+        image: "{{ .Values.vaultInit.image.repository }}:{{ .Values.vaultInit.image.tag }}"
+        imagePullPolicy: {{ .Values.vaultInit.image.pullPolicy }}
+        env:
+        - name: VAULT_ADDR
+          value: "http://openbao-vault-service:8200"
+        - name: VAULT_SKIP_VERIFY
+          value: "true"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "🔐 Starting OpenBao vault initialization"
+          
+          echo "Waiting for vault service to be available..."
+          timeout=300
+          while [ $timeout -gt 0 ]; do
+            if vault status >/dev/null 2>&1; then
+              echo "✅ Vault service is accessible"
+              break
+            fi
+            echo "Waiting for vault service... ($timeout seconds remaining)"
+            sleep 5
+            timeout=$((timeout - 5))
+          done
+          
+          if [ $timeout -le 0 ]; then
+            echo "❌ Timeout waiting for vault service"
+            exit 1
+          fi
+          
+          # Check if vault is already initialized
+          if vault status | grep -q "Initialized.*true"; then
+            echo "✅ Vault is already initialized"
+            exit 0
+          fi
+          
+          echo "Initializing vault with 5 key shares and threshold of 3..."
+          vault operator init -key-shares=5 -key-threshold=3 > /tmp/vault-init.txt
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ Vault initialized successfully!"
+            echo "⚠️  IMPORTANT: Save the following keys and root token securely:"
+            cat /tmp/vault-init.txt
+            
+            # Extract the first 3 unseal keys and unseal the vault
+            UNSEAL_KEY_1=$(grep 'Unseal Key 1:' /tmp/vault-init.txt | awk '{print $NF}')
+            UNSEAL_KEY_2=$(grep 'Unseal Key 2:' /tmp/vault-init.txt | awk '{print $NF}')
+            UNSEAL_KEY_3=$(grep 'Unseal Key 3:' /tmp/vault-init.txt | awk '{print $NF}')
+            
+            echo "Unsealing vault..."
+            vault operator unseal $UNSEAL_KEY_1
+            vault operator unseal $UNSEAL_KEY_2  
+            vault operator unseal $UNSEAL_KEY_3
+            
+            echo "✅ Vault unsealed successfully!"
+            vault status
+          else
+            echo "❌ Failed to initialize vault"
+            exit 1
+          fi
+        resources:
+          {{- toYaml .Values.vaultInit.resources | nindent 10 }}
+{{- end }}

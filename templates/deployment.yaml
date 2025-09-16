@@ -1,103 +1,53 @@
-apiVersion: apps/v1
-kind: Deployment
+---
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: {{ include "openbao.fullname" . }}
+  name: vault-config
   namespace: {{ include "openbao.namespace" . }}
   labels:
     {{- include "openbao.labels" . | nindent 4 }}
+data:
+  vault.hcl: |
+    storage "file" {
+      path = "{{ .Values.openbao.config.storage.file.path }}"
+    }
+    
+    listener "tcp" {
+      address = "{{ .Values.openbao.config.listener.tcp.address }}"
+      tls_disable = {{ .Values.openbao.config.listener.tcp.tls_disable }}
+    }
+    
+    ui = {{ .Values.openbao.config.ui }}
+    api_addr = "{{ .Values.openbao.config.api_addr }}"
+    cluster_addr = "{{ .Values.openbao.config.cluster_addr }}"
+    log_level = "{{ .Values.openbao.config.log_level }}"
+    disable_mlock = {{ .Values.openbao.config.disable_mlock }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openbao-vault
+  namespace: {{ include "openbao.namespace" . }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+    component: vault-server
 spec:
-  replicas: 1
+  replicas: {{ .Values.openbao.replicaCount }}
   selector:
     matchLabels:
       {{- include "openbao.selectorLabels" . | nindent 6 }}
+      vault: {{ .Values.vault.name }}
   template:
     metadata:
       labels:
         {{- include "openbao.selectorLabels" . | nindent 8 }}
+        app: openbao
+        vault: {{ .Values.vault.name }}
+        component: vault-server
+      annotations:
+        checksum/config: {{ toYaml .Values.openbao.config | sha256sum }}
     spec:
-      serviceAccountName: {{ include "openbao.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
-      securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- else }}
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 100
-        fsGroup: 1000
-      {{- end }}
-      containers:
-        - name: vault
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          ports:
-            - name: http
-              containerPort: {{ .Values.service.targetPort }}
-              protocol: TCP
-            - name: https-internal
-              containerPort: 8201
-              protocol: TCP
-          env:
-            - name: VAULT_ADDR
-              value: "http://127.0.0.1:{{ .Values.service.targetPort }}"
-            - name: VAULT_API_ADDR
-              value: "http://$(POD_IP):{{ .Values.service.targetPort }}"
-            - name: VAULT_CLUSTER_ADDR
-              value: "https://$(POD_IP):8201"
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            {{- range $key, $value := .Values.vault.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
-          args:
-            - "vault"
-            - "server"
-            - "-config=/vault/config/vault.hcl"
-          volumeMounts:
-            - name: config
-              mountPath: /vault/config
-              readOnly: true
-            {{- if .Values.persistence.enabled }}
-            - name: vault-storage
-              mountPath: /vault/file
-            {{- end }}
-          {{- with .Values.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          livenessProbe:
-            httpGet:
-              path: /v1/sys/health?standbyok=true
-              port: http
-              scheme: HTTP
-            initialDelaySeconds: 60
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 5
-          readinessProbe:
-            httpGet:
-              path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
-              port: http
-              scheme: HTTP
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 5
-      volumes:
-        - name: config
-          configMap:
-            name: {{ include "openbao.fullname" . }}-config
-        {{- if .Values.persistence.enabled }}
-        - name: vault-storage
-          persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-nfs-pvc
-        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -110,4 +60,93 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+      containers:
+      - name: vault
+        image: "{{ .Values.openbao.image.repository }}:{{ .Values.openbao.image.tag }}"
+        imagePullPolicy: {{ .Values.openbao.image.pullPolicy }}
+        command:
+          - vault
+          - server
+          - -config=/vault/config/vault.hcl
+        ports:
+        - containerPort: {{ .Values.service.targetPort }}
+          name: http
+          protocol: TCP
+        - containerPort: {{ .Values.service.targetClusterPort }}
+          name: cluster
+          protocol: TCP
+        env:
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
+        - name: VAULT_API_ADDR
+          value: "http://0.0.0.0:8200"
+        - name: VAULT_CLUSTER_ADDR
+          value: "http://0.0.0.0:8201"
+        - name: VAULT_RAFT_NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        securityContext:
+          {{- if .Values.securityContext.capabilities }}
+          capabilities:
+            {{- toYaml .Values.securityContext.capabilities | nindent 12 }}
+          {{- end }}
+        volumeMounts:
+        - name: vault-data
+          mountPath: /vault/data
+        - name: vault-config
+          mountPath: /vault/config
+        resources:
+          {{- toYaml .Values.openbao.resources | nindent 10 }}
+        {{- if .Values.openbao.probes.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.openbao.probes.readiness.path }}
+            port: {{ .Values.openbao.probes.readiness.port }}
+          initialDelaySeconds: {{ .Values.openbao.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.openbao.probes.readiness.periodSeconds }}
+        {{- end }}
+        {{- if .Values.openbao.probes.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.openbao.probes.liveness.path }}
+            port: {{ .Values.openbao.probes.liveness.port }}
+          initialDelaySeconds: {{ .Values.openbao.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.openbao.probes.liveness.periodSeconds }}
+        {{- end }}
+      volumes:
+      - name: vault-data
+        persistentVolumeClaim:
+          claimName: {{ .Values.vault.name }}-vault-data-pvc
+      - name: vault-config
+        configMap:
+          name: vault-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openbao-vault-service
+  namespace: {{ include "openbao.namespace" . }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+    component: vault-server
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "openbao.selectorLabels" . | nindent 4 }}
+    vault: {{ .Values.vault.name }}
+  ports:
+  - port: {{ .Values.service.port }}
+    targetPort: {{ .Values.service.targetPort }}
+    name: http
+    protocol: TCP
+  - port: {{ .Values.service.clusterPort }}
+    targetPort: {{ .Values.service.targetClusterPort }}
+    name: cluster
+    protocol: TCP

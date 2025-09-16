@@ -1,4 +1,6 @@
-# Helm values for OpenBao vault deployment
+# OpenBao vault dedicated deployment values
+# This file configures the OpenBao vault deployment on vault-labeled nodes
+
 vault:
   name: openbao
   fullName: openbao-vault
@@ -10,14 +12,14 @@ namespace:
   create: true
   name: openbao-vault-dedicated
 
-# NFS configuration for vault storage
+# NFS configuration for vault storage - CRITICAL: Using boyroywax/nfs-server
 nfs:
   image:
     repository: boyroywax/nfs-server
     tag: 1.0.0
     pullPolicy: IfNotPresent
   storage:
-    size: 10Gi  # Larger storage for vault data
+    size: 10Gi  # Storage for vault data
     storageClass: do-block-storage
   resources:
     requests:
@@ -77,14 +79,13 @@ openbao:
     log_level: "Info"
     # disable_mlock removed - not supported in OpenBao
 
-# Vault initialization job configuration (optional)
+# Vault initialization job - disabled for manual control
 vaultInit:
   enabled: false  # Set to true if you want auto-initialization
   image:
     repository: openbao/openbao
     tag: "latest"
     pullPolicy: Always
-  
   resources:
     requests:
       memory: "256Mi"
@@ -92,8 +93,7 @@ vaultInit:
     limits:
       memory: "512Mi"
       cpu: "250m"
-  
-  activeDeadlineSeconds: 300  # 5 minutes
+  activeDeadlineSeconds: 300
   backoffLimit: 3
   ttlSecondsAfterFinished: 86400
 
@@ -105,9 +105,9 @@ service:
   clusterPort: 8201
   targetClusterPort: 8201
 
-# Ingress configuration with TLS - DISABLED by default for security
+# Ingress configuration with TLS - DISABLED for security
 ingress:
-  enabled: false  # Vault should not be exposed externally by default
+  enabled: false  # Vault should not be exposed externally
   className: "nginx"
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
@@ -117,7 +117,6 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/client-max-body-size: "10m"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-  
   host: "vault.layerwork.space"
   tls:
     enabled: true
@@ -128,7 +127,7 @@ dns:
   domain: layerwork.space
   subdomain: vault
 
-# Security context
+# Security context for vault container
 securityContext:
   runAsUser: 1000
   runAsGroup: 1000
@@ -138,10 +137,11 @@ securityContext:
     add:
       - IPC_LOCK
 
-# Node selector and affinity for vault-labeled nodes
+# CRITICAL: Node selector for vault-labeled nodes
 nodeSelector:
   node-role.kubernetes.io/vault: "true"
 
+# CRITICAL: Node affinity for vault-labeled nodes
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:

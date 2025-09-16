@@ -1,0 +1,33 @@
+# Helm
+*.tgz
+charts/*/charts/
+charts/*/*.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.orig
+*~
+
+# Helm dependencies
+requirements.lock
+
+# Kubernetes secrets
+*.secret.yaml
+secrets/
+
+# Backup files
+*.backup
+*.bak

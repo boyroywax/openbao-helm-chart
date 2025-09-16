@@ -40,8 +40,9 @@ helm.sh/chart: {{ include "openbao.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-app: {{ .Values.labels.app | default "openbao" }}
-component: {{ .Values.labels.component | default "vault" }}
+app: {{ .Values.labels.app }}
+component: {{ .Values.labels.component }}
+vault: {{ .Values.vault.name }}
 {{- end }}
 
 {{/*
@@ -64,13 +65,13 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Generate namespace name - single namespace for all components
+Generate namespace name - dedicated namespace for vault
 */}}
 {{- define "openbao.namespace" -}}
 {{- if .Values.namespace.name }}
 {{- .Values.namespace.name }}
 {{- else }}
-{{- .Release.Name }}
+{{- printf "%s-vault-dedicated" .Values.vault.name }}
 {{- end }}
 {{- end }}
 
@@ -81,7 +82,7 @@ Generate ingress hostname
 {{- if .Values.ingress.host }}
 {{- .Values.ingress.host }}
 {{- else }}
-{{- printf "%s.%s.%s" .Release.Name .Values.dns.subdomain .Values.dns.domain }}
+{{- printf "%s.%s" .Values.dns.subdomain .Values.dns.domain }}
 {{- end }}
 {{- end }}
 
@@ -92,7 +93,7 @@ Generate TLS secret name
 {{- if .Values.ingress.tls.secretName }}
 {{- .Values.ingress.tls.secretName }}
 {{- else }}
-{{- printf "%s-tls" .Release.Name }}
+{{- printf "%s-vault-tls" .Values.vault.name }}
 {{- end }}
 {{- end }}
 
@@ -100,19 +101,5 @@ Generate TLS secret name
 Generate NFS server name
 */}}
 {{- define "openbao.nfsServerName" -}}
-{{- printf "%s-nfs-server" .Release.Name }}
-{{- end }}
-
-{{/*
-Generate NFS PV name
-*/}}
-{{- define "openbao.nfsPVName" -}}
-{{- printf "%s-nfs-pv" .Release.Name }}
-{{- end }}
-
-{{/*
-Generate NFS PVC name
-*/}}
-{{- define "openbao.nfsPVCName" -}}
-{{- printf "%s-nfs-pvc" .Release.Name }}
+{{- printf "nfs-server-%s" .Values.vault.name }}
 {{- end }}

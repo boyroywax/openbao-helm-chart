@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ .Release.Name }}-nfs-server-config
-  namespace: {{ .Values.global.namespace.name | default "openbao-vault" }}
-data:
-  exports: |
-    /exports *(rw,sync,no_subtree_check,no_root_squash)
