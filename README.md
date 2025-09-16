@@ -57,7 +57,7 @@ Taint nodes to ensure only vault workloads are scheduled:
 
 ```bash
 # Taint nodes to dedicate them for vault workloads
-kubectl taint node <vault-node> vault=dedicated:NoSchedule
+kubectl taint node <vault-node> node-role.kubernetes.io/vault=true:NoSchedule
 ```
 
 #### Step 3: Verify Node Configuration
@@ -234,12 +234,12 @@ kubectl describe pod -n openbao-vault <pod-name>
 
 **a) Node Taint Issues**
 ```bash
-# Error: "0/5 nodes are available: 2 node(s) had untolerated taint {vault: dedicated}"
+# Error: "0/5 nodes are available: 2 node(s) had untolerated taint {node-role.kubernetes.io/vault: true}"
 # Solution: Ensure your values file has proper tolerations:
 tolerations:
-  - key: "vault"
+  - key: "node-role.kubernetes.io/vault"
     operator: "Equal"
-    value: "dedicated"
+    value: "true"
     effect: "NoSchedule"
 ```
 
