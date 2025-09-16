@@ -1,5 +1,6 @@
+apiVersion: v2
 name: nfs-server
-version: 1.0.0
+version: 0.1.0
 description: A Helm chart for deploying an NFS server to manage storage for the OpenBao Vault server.
 type: application
 maintainers:
@@ -13,7 +14,3 @@ keywords:
 home: https://github.com/boyroywax/nfs-server
 sources:
   - https://github.com/boyroywax/nfs-server
-dependencies:
-  - name: openbao
-    version: 1.0.0
-    repository: file://../..
