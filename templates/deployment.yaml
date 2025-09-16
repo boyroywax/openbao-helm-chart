@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "openbao.fullname" . }}
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "openbao.namespace" . }}
   labels:
     {{- include "openbao.labels" . | nindent 4 }}
 spec:
@@ -16,32 +16,45 @@ spec:
         {{- include "openbao.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "openbao.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 100
         fsGroup: 1000
+      {{- end }}
       containers:
-        - name: openbao-vault
+        - name: vault
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
-              containerPort: 8200
+              containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
             - name: https-internal
               containerPort: 8201
               protocol: TCP
           env:
             - name: VAULT_ADDR
-              value: "http://127.0.0.1:8200"
+              value: "http://127.0.0.1:{{ .Values.service.targetPort }}"
             - name: VAULT_API_ADDR
-              value: "http://$(POD_IP):8200"
+              value: "http://$(POD_IP):{{ .Values.service.targetPort }}"
             - name: VAULT_CLUSTER_ADDR
               value: "https://$(POD_IP):8201"
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            {{- range $key, $value := .Values.vault.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
           args:
             - "vault"
             - "server"
@@ -50,8 +63,14 @@ spec:
             - name: config
               mountPath: /vault/config
               readOnly: true
+            {{- if .Values.persistence.enabled }}
             - name: vault-storage
               mountPath: /vault/file
+            {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           livenessProbe:
             httpGet:
               path: /v1/sys/health?standbyok=true
@@ -74,11 +93,21 @@ spec:
         - name: config
           configMap:
             name: {{ include "openbao.fullname" . }}-config
+        {{- if .Values.persistence.enabled }}
         - name: vault-storage
-          {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "openbao.fullname" . }}-pvc
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
+            claimName: {{ .Release.Name }}-nfs-pvc
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       terminationGracePeriodSeconds: 30

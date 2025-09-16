@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: {{ include "openbao.fullname" . }}-network-policy
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "openbao.namespace" . }}
   labels:
     {{- include "openbao.labels" . | nindent 4 }}
 spec:
@@ -19,7 +19,7 @@ spec:
               access: vault
       ports:
         - protocol: TCP
-          port: 8200
+          port: {{ .Values.service.targetPort }}
   egress:
     - to: []
       ports:

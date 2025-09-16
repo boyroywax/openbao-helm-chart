@@ -1,9 +1,8 @@
-# Default values for openbao-helm-chart
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# Values file for OpenBao Test Deployment
+# Based on the Ollama model chart structure
 
 # Release configuration
-nameOverride: ""
+nameOverride: "openbao"
 fullnameOverride: ""
 
 # Labels to apply to all resources
@@ -11,20 +10,26 @@ labels:
   app: openbao
   component: vault
 
+# Model/Service information (adapted from Ollama pattern)
+model:
+  name: "openbao-test"
+  displayName: "OpenBao Vault Server"
+  version: "latest"
+
 # Namespace configuration
 namespace:
-  name: openbao-vault
+  name: openbao-test
   create: true
 
 # Global values that will be passed to subcharts
 global:
   namespace:
-    name: openbao-vault
+    name: openbao-test
 
 # DNS configuration for ingress
 dns:
   subdomain: vault
-  domain: example.com
+  domain: layerwork.space
 
 # OpenBao/Vault image configuration
 image:
@@ -64,7 +69,7 @@ service:
 
 # Ingress configuration
 ingress:
-  enabled: false
+  enabled: true
   className: "nginx"
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
@@ -87,11 +92,11 @@ persistence:
 # Resource configuration
 resources:
   limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
     cpu: 500m
     memory: 512Mi
-  requests:
-    cpu: 250m
-    memory: 256Mi
 
 # Node selector, tolerations, and affinity
 nodeSelector: {}
@@ -111,7 +116,7 @@ nfs-server:
   enabled: true
   global:
     namespace:
-      name: openbao-vault
+      name: openbao-test
   # NFS server storage backend
   storage:
     enabled: true
