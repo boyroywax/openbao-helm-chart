@@ -243,6 +243,34 @@ EOF
 
 Flags such as `--secret-name`, `--chart`, and `--values` let you target non-default installations. The script requires `vault`, `kubectl`, `helm`, and `jq` in your `PATH`.
 
+### Disabling the userpass auth method
+
+If you later need to retire the `userpass` mount, enable the `userpassDisable` job values or use the paired helper script:
+
+```yaml
+userpassDisable:
+  enabled: true
+  mountPath: userpass-admin
+  tokenSecret:
+    name: vault-bootstrap-token
+    key: token
+```
+
+Or run the automation script (recommended for one-off operations):
+
+```bash
+export VAULT_ROOT_TOKEN="<root-or-bootstrap-token>"
+export VAULT_ADDR="http://localhost:8200"
+
+./scripts/run-userpass-disable.sh \
+  --namespace openbao-vault \
+  --release openbao-vault \
+  --mount-path userpass-admin \
+  --cleanup-secret
+```
+
+The disable script mirrors the bootstrap flow: it crafts a scoped policy, stores the temp token in your cluster, renders the `userpass-disable` Job, waits for it to finish, then (by default) revokes the token. Use `--keep-token` if you prefer to handle revocation yourself.
+
 ## 🏗️ Architecture
 
 Each deployment includes:

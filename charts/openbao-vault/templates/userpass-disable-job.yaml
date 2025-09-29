@@ -1,0 +1,90 @@
+{{- if .Values.userpassDisable.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: userpass-disable-{{ .Values.vault.name }}
+  namespace: {{ include "openbao.namespace" . }}
+  labels:
+    {{- include "openbao.labels" . | nindent 4 }}
+    component: userpass-disable
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "30"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.userpassDisable.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.userpassDisable.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.userpassDisable.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "openbao.labels" . | nindent 8 }}
+        component: userpass-disable
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: userpass-disable
+        image: "{{ .Values.userpassDisable.image.repository }}:{{ .Values.userpassDisable.image.tag }}"
+        imagePullPolicy: {{ .Values.userpassDisable.image.pullPolicy }}
+        env:
+        - name: VAULT_ADDR
+          value: {{ .Values.userpassDisable.vaultAddr | quote }}
+        - name: VAULT_SKIP_VERIFY
+          value: "true"
+        - name: VAULT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.userpassDisable.tokenSecret.name }}
+              key: {{ .Values.userpassDisable.tokenSecret.key }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+
+          echo "🔒 Starting userpass disable job"
+          echo "Using vault address: ${VAULT_ADDR}"
+
+          MOUNT_PATH="{{ .Values.userpassDisable.mountPath }}"
+          echo "Target userpass mount path: ${MOUNT_PATH}"
+
+          timeout={{ .Values.userpassDisable.waitTimeoutSeconds }}
+          echo "Waiting for Vault to respond (timeout: ${timeout}s)..."
+          while [ ${timeout} -gt 0 ]; do
+            if vault status >/dev/null 2>&1; then
+              echo "✅ Vault is reachable"
+              break
+            fi
+            sleep 5
+            timeout=$((timeout - 5))
+          done
+
+          if [ ${timeout} -le 0 ]; then
+            echo "❌ Timeout waiting for Vault API"
+            exit 1
+          fi
+
+          if vault auth list -format=json | grep -q "\"${MOUNT_PATH}/\""; then
+            echo "Disabling userpass auth method at ${MOUNT_PATH}/..."
+            vault auth disable "${MOUNT_PATH}" || {
+              echo "❌ Failed to disable userpass auth at ${MOUNT_PATH}/"
+              exit 1
+            }
+            echo "✅ Disabled userpass auth at ${MOUNT_PATH}/"
+          else
+            echo "ℹ️  userpass auth method not found at ${MOUNT_PATH}/. Nothing to disable."
+          fi
+
+          echo "🧹 Userpass disable job completed"
+        resources:
+          {{- toYaml .Values.userpassDisable.resources | nindent 10 }}
+{{- end }}
