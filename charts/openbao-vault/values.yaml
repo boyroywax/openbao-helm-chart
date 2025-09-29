@@ -51,13 +51,13 @@ openbao:
   probes:
     readiness:
       enabled: true
-      path: /v1/sys/health?standbyok=true
+      path: "/v1/sys/health?standbycode=200&perfstandbycode=200&drsecondarycode=200&sealedcode=200&uninitcode=200"
       port: 8200
       initialDelaySeconds: 30
       periodSeconds: 10
     liveness:
       enabled: true
-      path: /v1/sys/health?standbyok=true
+      path: "/v1/sys/health?standbycode=200&perfstandbycode=200&drsecondarycode=200&sealedcode=200&uninitcode=200"
       port: 8200
       initialDelaySeconds: 60
       periodSeconds: 30
