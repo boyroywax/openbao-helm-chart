@@ -171,6 +171,77 @@ helm install my-vault ./charts/openbao-vault \
 - **Storage Size**: Adjust `nfs.storage.size` based on vault data requirements
 - **Security**: All services use ClusterIP for internal-only access
 - **Namespace**: Configurable namespace for deployment isolation
+- **Userpass Bootstrap Job**: Automatically enable the `userpass` auth method and create initial users (see below)
+
+### Enabling the userpass auth method automatically
+
+If you want Vault to enable the `userpass` auth method immediately after installation (and optionally create bootstrap users), the chart provides a hook-driven Job that runs right after the release is installed or upgraded.
+
+1. **Create a secret containing a privileged Vault token** (root token or another policy with `sudo` access to auth operations):
+
+   ```bash
+   kubectl create secret generic vault-bootstrap-token \
+     --namespace openbao-vault \
+     --from-literal=token="<root-or-bootstrap-token>"
+   ```
+
+2. **Enable the job in your values file** (example snippet):
+
+   ```yaml
+   userpassBootstrap:
+     enabled: true
+     mountPath: userpass-admin
+     tokenSecret:
+       name: vault-bootstrap-token
+       key: token
+     users:
+       - username: vault-admin
+         password: change-me-now
+         policies:
+           - default
+           - admins
+   ```
+
+   - `mountPath` controls where the auth method is mounted (defaults to `userpass`).
+   - `users` is optional; omit or leave empty if you only need the auth method enabled.
+   - The Job runs with the image defined in `userpassBootstrap.image` and waits until Vault responds before enabling auth.
+
+3. **Apply the values and (re)install the chart**. The Job is annotated with Helm hooks (`post-install`, `post-upgrade`) and will remove itself after succeeding.
+
+> ⚠️ Store the bootstrap token secret securely and rotate it after bootstrap if possible.
+
+#### Using the helper script
+
+To streamline the process, the repository ships with `scripts/run-userpass-bootstrap.sh`, which:
+
+- Creates a constrained Vault policy and short-lived token
+- Stores that token in the cluster as `vault-bootstrap-token` (configurable)
+- Renders and applies the userpass bootstrap Job
+- Streams Job logs and waits for completion
+
+Example:
+
+```bash
+export VAULT_ROOT_TOKEN="<root-or-bootstrap-token>"
+export VAULT_ADDR="http://localhost:8200"         # or your remote Vault address
+
+# Optional file containing initial users (YAML list):
+cat <<'EOF' > bootstrap-users.yaml
+- username: vault-admin
+  password: change-me-now
+  policies:
+    - default
+    - admins
+EOF
+
+./scripts/run-userpass-bootstrap.sh \
+  --namespace openbao-vault \
+  --release openbao-vault \
+  --mount-path userpass-admin \
+  --users-file bootstrap-users.yaml
+```
+
+Flags such as `--secret-name`, `--chart`, and `--values` let you target non-default installations. The script requires `vault`, `kubectl`, `helm`, and `jq` in your `PATH`.
 
 ## 🏗️ Architecture
 

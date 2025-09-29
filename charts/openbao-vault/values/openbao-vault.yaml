@@ -175,3 +175,28 @@ persistence:
   storageClass: do-block-storage
   accessModes:
     - ReadWriteOnce
+
+# Optional: automatically enable userpass auth and seed users after deployment
+userpassBootstrap:
+  enabled: false
+  mountPath: userpass
+  vaultAddr: "http://openbao-vault-service:8200"
+  waitTimeoutSeconds: 300
+  tokenSecret:
+    name: vault-bootstrap-token
+    key: token
+  users: []
+  image:
+    repository: openbao/openbao
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "100m"
+  activeDeadlineSeconds: 300
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400
